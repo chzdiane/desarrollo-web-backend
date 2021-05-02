@@ -3,15 +3,24 @@ const { request } = require('express');
 const PostgresService = require('../../services/postgres.service');
 const _pg = new PostgresService();
 
+const EmailService = require('../../services/email.service');
+const _email = new EmailService();
+
+const ExcelService = require('../../services/excel.service');
 
 const getPeople = async (req, res) => {
 
-    let sql = 'select * from personas';
     try {
+        let sql = 'select * from personas';
         let result = await _pg.executeSql(sql);
         let rows = result.rows;
 
+        const _excel = new ExcelService();
+
+        await _excel.createWorkSheet(rows);
+
         return res.send({
+            url: 'http://localhost:3001/personas.xlsx',
             ok: true,
             message: "Personas consultadas",
             content: rows,
@@ -32,6 +41,9 @@ const createPeople = async (req, res) => {
         let people = req.body;
         let sql = `INSERT INTO public.personas (name, email) VALUES ('${people.name}','${people.email}');`;
         let result = await _pg.executeSql(sql);
+        if (result.rowCount==1) {
+            _email.sendEmail(people.email);
+        }
         return res.send({
             ok: true,
             message: result.rowCount == 1 ? "Persona creada" : "La persona no fue creada",
